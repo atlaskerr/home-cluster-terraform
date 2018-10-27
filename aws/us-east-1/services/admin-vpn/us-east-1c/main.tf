@@ -119,7 +119,7 @@ resource "aws_instance" "admin_vpn" {
 
 resource "aws_route53_record" "admin_vpn" {
   zone_id = "${local.zone_id}"
-  name    = "vpn.admin.us-east-1c.enron.io"
+  name    = "admin-vpn.us-east-1c.enron.io"
   type    = "A"
   ttl     = "300"
   records = ["${local.ip}"]
