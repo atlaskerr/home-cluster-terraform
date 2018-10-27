@@ -82,7 +82,6 @@ output "gitea_c" {
   value = "192.168.0.240/28"
 }
 
-
 /* ------------------ 192.168.1.0 ------------------ */
 /* HARBOR */
 output "harbor_c" {
@@ -153,7 +152,6 @@ output "igw" {
 #output "" {
 #  value = "192.168.1.240/28"
 #}
-
 
 /* KUBELETS */
 output "kubelets_c" {
