@@ -31,12 +31,14 @@ data "terraform_remote_state" "cidrs" {
 }
 
 locals {
-  vpc_id         = "${data.terraform_remote_state.vpc.vpc_id}"
-  route_table_id = "${data.terraform_remote_state.vpc.rt_public_id}"
-  cidr_block     = "${data.terraform_remote_state.cidrs.igw}"
-  gateway_id     = "${aws_internet_gateway.igw.id}"
-  subnet_id      = "${aws_subnet.igw.id}"
-  nat_id         = "${aws_eip.nat.id}"
+  vpc_id        = "${data.terraform_remote_state.vpc.vpc_id}"
+  rt_public_id  = "${data.terraform_remote_state.vpc.rt_public_id}"
+  rt_private_id = "${data.terraform_remote_state.vpc.rt_private_id}"
+  cidr_block    = "${data.terraform_remote_state.cidrs.igw}"
+  gateway_id    = "${aws_internet_gateway.igw.id}"
+  subnet_id     = "${aws_subnet.igw.id}"
+  nat_id        = "${aws_nat_gateway.nat.id}"
+  nat_eip_id    = "${aws_eip.nat.id}"
 }
 
 # Internet gateway for instances with public IPs
@@ -45,7 +47,7 @@ resource "aws_internet_gateway" "igw" {
 }
 
 resource "aws_route" "igw" {
-  route_table_id         = "${local.route_table_id}"
+  route_table_id         = "${local.rt_public_id}"
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = "${local.gateway_id}"
 }
@@ -58,7 +60,7 @@ resource "aws_subnet" "igw" {
 
 resource "aws_route_table_association" "igw" {
   subnet_id      = "${local.subnet_id}"
-  route_table_id = "${local.route_table_id}"
+  route_table_id = "${local.rt_public_id}"
 }
 
 # NAT Gateway for private subnets that need internet access
@@ -67,8 +69,14 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "nat" {
-  allocation_id = "${local.nat_id}"
+  allocation_id = "${local.nat_eip_id}"
   subnet_id     = "${local.subnet_id}"
+}
+
+resource "aws_route" "nat" {
+  route_table_id         = "${local.rt_private_id}"
+  nat_gateway_id         = "${local.nat_id}"
+  destination_cidr_block = "0.0.0.0/0"
 }
 
 output "igw_id" {

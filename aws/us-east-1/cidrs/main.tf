@@ -22,8 +22,8 @@ output "admin_vpn_e" {
 }
 
 /* DEV VPN */
-output "dev_vpn_c" {
-  value = "192.168.0.32/29"
+output "user_vpn_c" {
+  value = "192.168.0.32/28"
 }
 
 /* LDAP */
@@ -128,14 +128,14 @@ output "igw" {
   value = "192.168.1.128/28"
 }
 
-#output "elasticsearch_c" {
-#  value = "192.168.1.144/28"
-#}
-#
-#output "" {
-#  value = "192.168.1.160/28"
-#}
-#
+output "elasticsearch_c" {
+  value = "192.168.1.144/28"
+}
+
+output "etcd_lb" {
+  value = "192.168.1.160/28"
+}
+
 #output "" {
 #  value = "192.168.1.176/28"
 #}
