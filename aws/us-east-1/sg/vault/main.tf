@@ -5,7 +5,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "terraform-enron"
-    key    = "aws/us-east-1/sg/etcd/terraform.tfstate"
+    key    = "aws/us-east-1/sg/vault/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -31,30 +31,27 @@ data "terraform_remote_state" "cidrs" {
 }
 
 locals {
-  vpc_id = "${data.terraform_remote_state.vpc.vpc_id}"
-  vpc_cidr = "${data.terraform_remote_state.vpc.cidr}"
+  vpc_id   = "${data.terraform_remote_state.vpc.vpc_id}"
   vpc_name = "${data.terraform_remote_state.vpc.name}"
 
   admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
   admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
-
   etcd_b      = "${data.terraform_remote_state.cidrs.etcd_b}"
   etcd_c      = "${data.terraform_remote_state.cidrs.etcd_c}"
   etcd_d      = "${data.terraform_remote_state.cidrs.etcd_d}"
   etcd_e      = "${data.terraform_remote_state.cidrs.etcd_e}"
   etcd_f      = "${data.terraform_remote_state.cidrs.etcd_f}"
 
-
-  sg_id  = "${aws_security_group.etcd.id}"
+  sg_id = "${aws_security_group.vault.id}"
 }
 
-resource "aws_security_group" "etcd" {
-  name        = "etcd"
-  description = "Etcd Security Group"
+resource "aws_security_group" "vault" {
+  name        = "vault"
+  description = "Vault Security Group"
   vpc_id      = "${local.vpc_id}"
 
   tags {
-    Name = "etcd-sg-${local.vpc_name}"
+    Name = "vault-sg-${local.vpc_name}"
   }
 }
 
@@ -73,72 +70,11 @@ resource "aws_security_group_rule" "ssh_in_admin_vpn" {
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "etcd_in_vpc" {
-  description       = "Allow inbound Etcd client traffic from VPC"
-  type              = "ingress"
-  from_port         = "2379"
-  to_port           = "2379"
-  protocol          = "tcp"
-  cidr_blocks       = ["${local.vpc_cidr}"]
-  security_group_id = "${local.sg_id}"
-}
-
-resource "aws_security_group_rule" "etcd_in_peer" {
-  description = "Allow inbound Etcd peer traffic from Etcd subnets"
-  type        = "ingress"
-  from_port   = "2380"
-  to_port     = "2380"
-  protocol    = "tcp"
-
-  cidr_blocks = [
-    "${local.etcd_b}",
-    "${local.etcd_c}",
-    "${local.etcd_d}",
-    "${local.etcd_e}",
-    "${local.etcd_f}",
-  ]
-
-  security_group_id = "${local.sg_id}"
-}
-
-resource "aws_security_group_rule" "etcd_in_client" {
-  description = "Allow inbound Etcd client traffic from Etcd subnets"
-  type        = "ingress"
-  from_port   = "2379"
-  to_port     = "2379"
-  protocol    = "tcp"
-
-  cidr_blocks = [
-    "${local.etcd_b}",
-    "${local.etcd_c}",
-    "${local.etcd_d}",
-    "${local.etcd_e}",
-    "${local.etcd_f}",
-  ]
-
-  security_group_id = "${local.sg_id}"
-}
-
-resource "aws_security_group_rule" "etcd_in_admin_vpn" {
-  description = "Allow inbound Etcd client traffic from Admin VPN subnets"
-  type        = "ingress"
-  from_port   = "2379"
-  to_port     = "2379"
-  protocol    = "tcp"
-
-  cidr_blocks = [
-    "${local.admin_vpn_c}",
-    "${local.admin_vpn_e}"
-  ]
-
-  security_group_id = "${local.sg_id}"
-}
-
-resource "aws_security_group_rule" "etcd_out_peer" {
-  description = "Allow outbound Etcd peer traffic to Etcd subnets"
+resource "aws_security_group_rule" "etcd_out" {
+  description = "Allow outbound Etcd client traffic to Etcd subnets"
   type        = "egress"
-  from_port   = "2380"
-  to_port     = "2380"
+  from_port   = "2379"
+  to_port     = "2379"
   protocol    = "tcp"
 
   cidr_blocks = [
@@ -165,6 +101,16 @@ resource "aws_security_group_rule" "http_out_all" {
 resource "aws_security_group_rule" "https_out_all" {
   description       = "Allow outbound HTTPS to everywhere"
   type              = "egress"
+  from_port         = "443"
+  to_port           = "443"
+  protocol          = "TCP"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "https_in_all" {
+  description       = "Allow inbound HTTPS from everywhere"
+  type              = "ingress"
   from_port         = "443"
   to_port           = "443"
   protocol          = "TCP"
