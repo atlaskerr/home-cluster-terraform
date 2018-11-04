@@ -91,16 +91,16 @@ data "aws_ami" "centos" {
 }
 
 locals {
-  az       = "us-east-1c"
-  vpc_id   = "${data.terraform_remote_state.vpc.vpc_id}"
-  vpc_name = "${data.terraform_remote_state.vpc.name}"
-  rt_id    = "${data.terraform_remote_state.vpc.rt_private_id}"
-  key_name = "${data.terraform_remote_state.ssh_keys.atlas}"
-  cidr     = "${data.terraform_remote_state.cidrs.etcd_c}"
-  sg_id    = "${data.terraform_remote_state.sg_etcd.sg_id}"
-  ami      = "${data.aws_ami.centos.id}"
-  zone_id       = "${data.terraform_remote_state.dns.private_zone_id}"
-  zone_name       = "${data.terraform_remote_state.dns.private_zone_domain_name}"
+  az        = "us-east-1c"
+  vpc_id    = "${data.terraform_remote_state.vpc.vpc_id}"
+  vpc_name  = "${data.terraform_remote_state.vpc.name}"
+  rt_id     = "${data.terraform_remote_state.vpc.rt_private_id}"
+  key_name  = "${data.terraform_remote_state.ssh_keys.atlas}"
+  cidr      = "${data.terraform_remote_state.cidrs.etcd_c}"
+  sg_id     = "${data.terraform_remote_state.sg_etcd.sg_id}"
+  ami       = "${data.aws_ami.centos.id}"
+  zone_id   = "${data.terraform_remote_state.dns.private_zone_id}"
+  zone_name = "${data.terraform_remote_state.dns.private_zone_domain_name}"
 
   dns_base_name = "etcd.${local.zone_name}"
   subnet_id     = "${aws_subnet.etcd.id}"
@@ -191,7 +191,6 @@ resource "aws_volume_attachment" "etcd3" {
   volume_id   = "${local.etcd3_vol}"
 }
 
-
 resource "aws_route53_record" "etcd1" {
   zone_id = "${local.zone_id}"
   name    = "node-1.${local.dns_base_name}"
@@ -225,7 +224,7 @@ resource "aws_route53_record" "etcd_servers" {
   records = [
     "0 40 2380 ${local.etcd1_dns_record}",
     "0 40 2380 ${local.etcd2_dns_record}",
-    "0 20 2380 ${local.etcd3_dns_record}"
+    "0 20 2380 ${local.etcd3_dns_record}",
   ]
 }
 
@@ -238,6 +237,6 @@ resource "aws_route53_record" "etcd_clients" {
   records = [
     "0 40 2379 ${local.etcd1_dns_record}",
     "0 40 2379 ${local.etcd2_dns_record}",
-    "0 20 2379 ${local.etcd3_dns_record}"
+    "0 20 2379 ${local.etcd3_dns_record}",
   ]
 }

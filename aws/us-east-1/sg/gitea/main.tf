@@ -5,7 +5,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "terraform-enron"
-    key    = "aws/us-east-1/sg/vault/terraform.tfstate"
+    key    = "aws/us-east-1/sg/gitea/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -32,27 +32,24 @@ data "terraform_remote_state" "cidrs" {
 
 locals {
   vpc_id   = "${data.terraform_remote_state.vpc.vpc_id}"
+  vpc_cidr = "${data.terraform_remote_state.vpc.cidr}"
   vpc_name = "${data.terraform_remote_state.vpc.name}"
 
   admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
   admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
-  etcd_b      = "${data.terraform_remote_state.cidrs.etcd_b}"
-  etcd_c      = "${data.terraform_remote_state.cidrs.etcd_c}"
-  etcd_d      = "${data.terraform_remote_state.cidrs.etcd_d}"
-  etcd_e      = "${data.terraform_remote_state.cidrs.etcd_e}"
-  etcd_f      = "${data.terraform_remote_state.cidrs.etcd_f}"
+
   ldap_c = "${data.terraform_remote_state.cidrs.ldap_c}"
 
-  sg_id = "${aws_security_group.vault.id}"
+  sg_id = "${aws_security_group.gitea.id}"
 }
 
-resource "aws_security_group" "vault" {
-  name        = "vault"
-  description = "Vault Security Group"
+resource "aws_security_group" "gitea" {
+  name        = "gitea"
+  description = "Gitea Security Group"
   vpc_id      = "${local.vpc_id}"
 
   tags {
-    Name = "vault-sg-${local.vpc_name}"
+    Name = "gitea-sg-${local.vpc_name}"
   }
 }
 
@@ -71,31 +68,48 @@ resource "aws_security_group_rule" "ssh_in_admin_vpn" {
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "etcd_out" {
-  description = "Allow outbound Etcd client traffic to Etcd subnets"
-  type        = "egress"
-  from_port   = "2379"
-  to_port     = "2379"
+resource "aws_security_group_rule" "pg_in_admin_vpn" {
+  description = "Allow inbound Posgtres traffic from Admin VPN subnets"
+  type        = "ingress"
+  from_port   = "5432"
+  to_port     = "5432"
   protocol    = "tcp"
 
   cidr_blocks = [
-    "${local.etcd_b}",
-    "${local.etcd_c}",
-    "${local.etcd_d}",
-    "${local.etcd_e}",
-    "${local.etcd_f}",
+    "${local.admin_vpn_c}",
+    "${local.admin_vpn_e}",
   ]
 
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "http_out_all" {
-  description       = "Allow outbound HTTP to everywhere"
-  type              = "egress"
-  from_port         = "80"
-  to_port           = "80"
-  protocol          = "TCP"
-  cidr_blocks       = ["0.0.0.0/0"]
+resource "aws_security_group_rule" "http_in_admin_vpn" {
+  description = "Allow inbound HTTP traffic from Admin VPN subnets"
+  type        = "ingress"
+  from_port   = "80"
+  to_port     = "80"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.admin_vpn_c}",
+    "${local.admin_vpn_e}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "https_in_admin_vpn" {
+  description = "Allow inbound HTTPS traffic from Admin VPN subnets"
+  type        = "ingress"
+  from_port   = "443"
+  to_port     = "443"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.admin_vpn_c}",
+    "${local.admin_vpn_e}",
+  ]
+
   security_group_id = "${local.sg_id}"
 }
 
@@ -113,19 +127,19 @@ resource "aws_security_group_rule" "ldaps_out" {
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "https_out_all" {
-  description       = "Allow outbound HTTPS to everywhere"
+resource "aws_security_group_rule" "http_out_all" {
+  description       = "Allow outbound HTTP to everywhere"
   type              = "egress"
-  from_port         = "443"
-  to_port           = "443"
+  from_port         = "80"
+  to_port           = "80"
   protocol          = "TCP"
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "https_in_all" {
-  description       = "Allow inbound HTTPS from everywhere"
-  type              = "ingress"
+resource "aws_security_group_rule" "https_out_all" {
+  description       = "Allow outbound HTTPS to everywhere"
+  type              = "egress"
   from_port         = "443"
   to_port           = "443"
   protocol          = "TCP"

@@ -5,7 +5,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "terraform-enron"
-    key    = "aws/us-east-1/services/admin-vpn/us-east-1c/terraform.tfstate"
+    key    = "aws/us-east-1/services/kubernetes/kube-master/us-east-1c/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -16,16 +16,6 @@ data "terraform_remote_state" "vpc" {
   config {
     bucket = "terraform-enron"
     key    = "aws/us-east-1/vpc/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-
-data "terraform_remote_state" "cidrs" {
-  backend = "s3"
-
-  config {
-    bucket = "terraform-enron"
-    key    = "aws/us-east-1/cidrs/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -50,12 +40,22 @@ data "terraform_remote_state" "dns" {
   }
 }
 
-data "terraform_remote_state" "sg_admin_vpn" {
+data "terraform_remote_state" "cidrs" {
   backend = "s3"
 
   config {
     bucket = "terraform-enron"
-    key    = "aws/us-east-1/sg/admin-vpn/terraform.tfstate"
+    key    = "aws/us-east-1/cidrs/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+
+data "terraform_remote_state" "sg_kube_master" {
+  backend = "s3"
+
+  config {
+    bucket = "terraform-enron"
+    key    = "aws/us-east-1/sg/kubernetes/kube-master/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -82,35 +82,40 @@ data "aws_ami" "centos" {
 
 locals {
   az        = "us-east-1c"
-  cidr      = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
-  rt_id     = "${data.terraform_remote_state.vpc.rt_public_id}"
-  key_name  = "${data.terraform_remote_state.ssh_keys.atlas}"
-  zone_id   = "${data.terraform_remote_state.dns.public_zone_id}"
+  ami       = "${data.aws_ami.centos.id}"
   vpc_id    = "${data.terraform_remote_state.vpc.vpc_id}"
   vpc_name  = "${data.terraform_remote_state.vpc.name}"
-  sg_id     = "${data.terraform_remote_state.sg_admin_vpn.sg_id}"
-  ami       = "${data.aws_ami.centos.id}"
-  subnet_id = "${aws_subnet.admin_vpn.id}"
-  ip        = "${aws_instance.admin_vpn.public_ip}"
+  rt_id     = "${data.terraform_remote_state.vpc.rt_private_id}"
+  key_name  = "${data.terraform_remote_state.ssh_keys.atlas}"
+  cidr      = "${data.terraform_remote_state.cidrs.kube_master_c}"
+  sg_id     = "${data.terraform_remote_state.sg_kube_master.sg_id}"
+  zone_id   = "${data.terraform_remote_state.dns.private_zone_id}"
+  zone_name = "${data.terraform_remote_state.dns.private_zone_domain_name}"
+
+  subnet_id   = "${aws_subnet.kube_master.id}"
+  ip          = "${aws_instance.kube_master.private_ip}"
+  instance_id = "${aws_instance.kube_master.id}"
+
+  dns_name = "api.k8s.${local.zone_name}"
 }
 
-resource "aws_subnet" "admin_vpn" {
+resource "aws_subnet" "kube_master" {
   vpc_id                  = "${local.vpc_id}"
-  availability_zone       = "${local.az}"
+  availability_zone       = "us-east-1c"
   cidr_block              = "${local.cidr}"
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags {
-    Name = "admin_vpn-subnet-${local.vpc_name}-${local.az}"
+    Name = "kubernetes-master-subnet-${local.vpc_name}-${local.az}"
   }
 }
 
-resource "aws_route_table_association" "admin_vpn" {
+resource "aws_route_table_association" "kube_master" {
   subnet_id      = "${local.subnet_id}"
   route_table_id = "${local.rt_id}"
 }
 
-resource "aws_instance" "admin_vpn" {
+resource "aws_instance" "kube_master" {
   ami                    = "${local.ami}"
   key_name               = "${local.key_name}"
   instance_type          = "t3.micro"
@@ -118,13 +123,13 @@ resource "aws_instance" "admin_vpn" {
   vpc_security_group_ids = ["${local.sg_id}"]
 
   tags {
-    Name = "admin_vpn-instance-${local.vpc_name}-${local.az}"
+    Name = "kubernetes-master-instance-${local.vpc_name}-${local.az}"
   }
 }
 
-resource "aws_route53_record" "admin_vpn" {
+resource "aws_route53_record" "kube_master" {
   zone_id = "${local.zone_id}"
-  name    = "vpn.atlaskerr.com"
+  name    = "${local.dns_name}"
   type    = "A"
   ttl     = "300"
   records = ["${local.ip}"]

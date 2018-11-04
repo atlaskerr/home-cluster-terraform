@@ -136,10 +136,10 @@ output "etcd_lb" {
   value = "192.168.1.160/28"
 }
 
-#output "" {
-#  value = "192.168.1.176/28"
-#}
-#
+output "kube_master_c" {
+  value = "192.168.1.176/28"
+}
+
 #output "" {
 #  value = "192.168.1.192/28"
 #}

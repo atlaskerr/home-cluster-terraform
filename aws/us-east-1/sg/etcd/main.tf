@@ -31,21 +31,20 @@ data "terraform_remote_state" "cidrs" {
 }
 
 locals {
-  vpc_id = "${data.terraform_remote_state.vpc.vpc_id}"
+  vpc_id   = "${data.terraform_remote_state.vpc.vpc_id}"
   vpc_cidr = "${data.terraform_remote_state.vpc.cidr}"
   vpc_name = "${data.terraform_remote_state.vpc.name}"
 
   admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
   admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
 
-  etcd_b      = "${data.terraform_remote_state.cidrs.etcd_b}"
-  etcd_c      = "${data.terraform_remote_state.cidrs.etcd_c}"
-  etcd_d      = "${data.terraform_remote_state.cidrs.etcd_d}"
-  etcd_e      = "${data.terraform_remote_state.cidrs.etcd_e}"
-  etcd_f      = "${data.terraform_remote_state.cidrs.etcd_f}"
+  etcd_b = "${data.terraform_remote_state.cidrs.etcd_b}"
+  etcd_c = "${data.terraform_remote_state.cidrs.etcd_c}"
+  etcd_d = "${data.terraform_remote_state.cidrs.etcd_d}"
+  etcd_e = "${data.terraform_remote_state.cidrs.etcd_e}"
+  etcd_f = "${data.terraform_remote_state.cidrs.etcd_f}"
 
-
-  sg_id  = "${aws_security_group.etcd.id}"
+  sg_id = "${aws_security_group.etcd.id}"
 }
 
 resource "aws_security_group" "etcd" {
@@ -128,7 +127,7 @@ resource "aws_security_group_rule" "etcd_in_admin_vpn" {
 
   cidr_blocks = [
     "${local.admin_vpn_c}",
-    "${local.admin_vpn_e}"
+    "${local.admin_vpn_e}",
   ]
 
   security_group_id = "${local.sg_id}"

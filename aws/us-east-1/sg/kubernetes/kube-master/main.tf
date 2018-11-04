@@ -5,7 +5,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "terraform-enron"
-    key    = "aws/us-east-1/sg/ldap/terraform.tfstate"
+    key    = "aws/us-east-1/sg/kubernetes/kube-master/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -31,39 +31,53 @@ data "terraform_remote_state" "cidrs" {
 }
 
 locals {
-  vpc_id      = "${data.terraform_remote_state.vpc.vpc_id}"
+  vpc_id   = "${data.terraform_remote_state.vpc.vpc_id}"
+  vpc_cidr = "${data.terraform_remote_state.vpc.cidr}"
+  vpc_name = "${data.terraform_remote_state.vpc.name}"
+
   admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
   admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
-  sg_id       = "${aws_security_group.ldap.id}"
+
+  sg_id = "${aws_security_group.kube_master.id}"
 }
 
-resource "aws_security_group" "ldap" {
-  name        = "ldap"
-  description = "LDAP Security Group"
+resource "aws_security_group" "kube_master" {
+  name        = "kube-master"
+  description = "Kubernetes Master Security Group"
   vpc_id      = "${local.vpc_id}"
 
   tags {
-    Name = "LDAP"
+    Name = "kube-master-sg-${local.vpc_name}"
   }
 }
 
 resource "aws_security_group_rule" "ssh_in_admin_vpn" {
-  description       = "Allow inbound SSH from Admin VPN subnets"
-  type              = "ingress"
-  from_port         = "22"
-  to_port           = "22"
-  protocol          = "tcp"
-  cidr_blocks       = ["${local.admin_vpn_c}", "${local.admin_vpn_e}"]
+  description = "Allow inbound SSH from Admin VPN subnets"
+  type        = "ingress"
+  from_port   = "22"
+  to_port     = "22"
+  protocol    = "tcp"
+
+  cidr_blocks = [
+    "${local.admin_vpn_c}",
+    "${local.admin_vpn_e}",
+  ]
+
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "ldaps_in_all" {
-  description       = "Allow inbound LDAPS from everywhere"
-  type              = "ingress"
-  from_port         = "636"
-  to_port           = "636"
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
+resource "aws_security_group_rule" "https_in_admin_vpn" {
+  description = "Allow inbound HTTPS traffic from Admin VPN subnets"
+  type        = "ingress"
+  from_port   = "443"
+  to_port     = "443"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.admin_vpn_c}",
+    "${local.admin_vpn_e}",
+  ]
+
   security_group_id = "${local.sg_id}"
 }
 

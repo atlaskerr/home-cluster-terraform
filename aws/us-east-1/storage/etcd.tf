@@ -31,9 +31,11 @@ resource "aws_ebs_volume" "etcd3" {
 output "etcd1_vol_id" {
   value = "${aws_ebs_volume.etcd1.id}"
 }
+
 output "etcd2_vol_id" {
   value = "${aws_ebs_volume.etcd2.id}"
 }
+
 output "etcd3_vol_id" {
   value = "${aws_ebs_volume.etcd3.id}"
 }
