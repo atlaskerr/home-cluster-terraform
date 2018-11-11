@@ -38,6 +38,8 @@ locals {
   admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
   admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
 
+  prometheus_c = "${data.terraform_remote_state.cidrs.prometheus_c}"
+
   sg_id = "${aws_security_group.concourse_worker.id}"
 }
 
@@ -61,6 +63,20 @@ resource "aws_security_group_rule" "ssh_in_admin_vpn" {
   cidr_blocks = [
     "${local.admin_vpn_c}",
     "${local.admin_vpn_e}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "node_exporter_out" {
+  description = "Allow inbound node_exporter traffic from prometheus subnets"
+  type        = "ingress"
+  from_port   = "9100"
+  to_port     = "9100"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.prometheus_c}",
   ]
 
   security_group_id = "${local.sg_id}"

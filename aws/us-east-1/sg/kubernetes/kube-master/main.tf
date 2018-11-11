@@ -37,6 +37,12 @@ locals {
 
   admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
   admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
+  prometheus_c = "${data.terraform_remote_state.cidrs.prometheus_c}"
+  etcd_b      = "${data.terraform_remote_state.cidrs.etcd_b}"
+  etcd_c      = "${data.terraform_remote_state.cidrs.etcd_c}"
+  etcd_d      = "${data.terraform_remote_state.cidrs.etcd_d}"
+  etcd_e      = "${data.terraform_remote_state.cidrs.etcd_e}"
+  etcd_f      = "${data.terraform_remote_state.cidrs.etcd_f}"
 
   sg_id = "${aws_security_group.kube_master.id}"
 }
@@ -76,6 +82,38 @@ resource "aws_security_group_rule" "https_in_admin_vpn" {
   cidr_blocks = [
     "${local.admin_vpn_c}",
     "${local.admin_vpn_e}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "etcd_out" {
+  description = "Allow outbound Etcd client traffic to Etcd subnets"
+  type        = "egress"
+  from_port   = "2379"
+  to_port     = "2379"
+  protocol    = "tcp"
+
+  cidr_blocks = [
+    "${local.etcd_b}",
+    "${local.etcd_c}",
+    "${local.etcd_d}",
+    "${local.etcd_e}",
+    "${local.etcd_f}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "node_exporter_out" {
+  description = "Allow inbound node_exporter traffic from prometheus subnets"
+  type        = "ingress"
+  from_port   = "9100"
+  to_port     = "9100"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.prometheus_c}",
   ]
 
   security_group_id = "${local.sg_id}"

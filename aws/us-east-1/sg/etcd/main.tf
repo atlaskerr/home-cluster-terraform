@@ -37,6 +37,7 @@ locals {
 
   admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
   admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
+  prometheus_c = "${data.terraform_remote_state.cidrs.prometheus_c}"
 
   etcd_b = "${data.terraform_remote_state.cidrs.etcd_b}"
   etcd_c = "${data.terraform_remote_state.cidrs.etcd_c}"
@@ -146,6 +147,20 @@ resource "aws_security_group_rule" "etcd_out_peer" {
     "${local.etcd_d}",
     "${local.etcd_e}",
     "${local.etcd_f}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "node_exporter_out" {
+  description = "Allow inbound node_exporter traffic from prometheus subnets"
+  type        = "ingress"
+  from_port   = "9100"
+  to_port     = "9100"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.prometheus_c}",
   ]
 
   security_group_id = "${local.sg_id}"

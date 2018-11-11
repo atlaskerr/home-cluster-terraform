@@ -128,7 +128,7 @@ output "igw" {
   value = "192.168.1.128/28"
 }
 
-output "elasticsearch_c" {
+output "efk_elasticsearch_c" {
   value = "192.168.1.144/28"
 }
 
@@ -140,15 +140,18 @@ output "kube_master_c" {
   value = "192.168.1.176/28"
 }
 
-#output "" {
-#  value = "192.168.1.192/28"
-#}
-#output "" {
-#  value = "192.168.1.208/28"
-#}
-#output "" {
-#  value = "192.168.1.224/28"
-#}
+output "dex_c" {
+  value = "192.168.1.192/28"
+}
+
+output "gangway_c" {
+  value = "192.168.1.208/28"
+}
+
+output "spinnaker_c" {
+  value = "192.168.1.224/28"
+}
+
 #output "" {
 #  value = "192.168.1.240/28"
 #}
