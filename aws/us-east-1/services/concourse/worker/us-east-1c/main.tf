@@ -107,7 +107,7 @@ locals {
   instance_id = "${aws_instance.concourse_worker.id}"
   worker_data = "${data.terraform_remote_state.storage.concourse_worker1_id}"
 
-  dns_name = "node-1.workers.ci.${local.zone_name}"
+  dns_name = "worker-0.ci.${local.zone_name}"
 }
 
 resource "aws_subnet" "concourse_worker" {
@@ -134,7 +134,7 @@ resource "aws_instance" "concourse_worker" {
   vpc_security_group_ids = ["${local.sg_id}"]
 
   tags {
-    Name = "concourse-worker-1-instance-${local.vpc_name}-${local.az}"
+    Name = "concourse-worker-0-instance-${local.vpc_name}-${local.az}"
   }
 }
 

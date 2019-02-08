@@ -5,7 +5,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "terraform-enron"
-    key    = "aws/us-east-1/services/harbor/us-east-1c/terraform.tfstate"
+    key    = "aws/us-east-1/services/gangway/us-east-1c/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -50,32 +50,12 @@ data "terraform_remote_state" "cidrs" {
   }
 }
 
-data "terraform_remote_state" "sg_harbor" {
+data "terraform_remote_state" "sg_gangway" {
   backend = "s3"
 
   config {
     bucket = "terraform-enron"
-    key    = "aws/us-east-1/sg/harbor/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-
-data "terraform_remote_state" "storage" {
-  backend = "s3"
-
-  config {
-    bucket = "terraform-enron"
-    key    = "aws/us-east-1/storage/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-
-data "terraform_remote_state" "iam" {
-  backend = "s3"
-
-  config {
-    bucket = "terraform-enron"
-    key    = "aws/us-east-1/iam/harbor/terraform.tfstate"
+    key    = "aws/us-east-1/sg/gangway/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -106,64 +86,48 @@ locals {
   vpc_name  = "${data.terraform_remote_state.vpc.name}"
   rt_id     = "${data.terraform_remote_state.vpc.rt_private_id}"
   key_name  = "${data.terraform_remote_state.ssh_keys.atlas}"
-  cidr      = "${data.terraform_remote_state.cidrs.harbor_c}"
-  sg_id     = "${data.terraform_remote_state.sg_harbor.sg_id}"
+  cidr      = "${data.terraform_remote_state.cidrs.gangway_c}"
+  sg_id     = "${data.terraform_remote_state.sg_gangway.sg_id}"
   ami       = "${data.aws_ami.centos.id}"
   zone_id   = "${data.terraform_remote_state.dns.private_zone_id}"
   zone_name = "${data.terraform_remote_state.dns.private_zone_domain_name}"
-  iam_id    = "${data.terraform_remote_state.iam.harbor_iam_profile}"
 
-  subnet_id     = "${aws_subnet.harbor.id}"
-  ip            = "${aws_instance.harbor.private_ip}"
-  instance_id   = "${aws_instance.harbor.id}"
-  harbor_db     = "${data.terraform_remote_state.storage.harbor_db_id}"
-  image_storage = "${data.terraform_remote_state.storage.image_storage_id}"
+  subnet_id   = "${aws_subnet.gangway.id}"
+  ip          = "${aws_instance.gangway.private_ip}"
+  instance_id = "${aws_instance.gangway.id}"
 
-  dns_name = "img.${local.zone_name}"
+  dns_name = "k8s.${local.zone_name}"
 }
 
-resource "aws_subnet" "harbor" {
+resource "aws_subnet" "gangway" {
   vpc_id                  = "${local.vpc_id}"
   availability_zone       = "us-east-1c"
   cidr_block              = "${local.cidr}"
   map_public_ip_on_launch = false
 
   tags {
-    Name = "harbor-subnet-${local.vpc_name}-${local.az}"
+    Name = "gangway-subnet-${local.vpc_name}-${local.az}"
   }
 }
 
-resource "aws_route_table_association" "harbor" {
+resource "aws_route_table_association" "gangway" {
   subnet_id      = "${local.subnet_id}"
   route_table_id = "${local.rt_id}"
 }
 
-resource "aws_instance" "harbor" {
+resource "aws_instance" "gangway" {
   ami                    = "${local.ami}"
   key_name               = "${local.key_name}"
-  instance_type          = "t3.medium"
+  instance_type          = "t3.micro"
   subnet_id              = "${local.subnet_id}"
   vpc_security_group_ids = ["${local.sg_id}"]
-  iam_instance_profile   = "${local.iam_id}"
 
   tags {
-    Name = "harbor-instance-${local.vpc_name}-${local.az}"
+    Name = "gangway-instance-${local.vpc_name}-${local.az}"
   }
 }
 
-resource "aws_volume_attachment" "harbor_db" {
-  device_name = "/dev/sdf"
-  instance_id = "${local.instance_id}"
-  volume_id   = "${local.harbor_db}"
-}
-
-resource "aws_volume_attachment" "image_storage" {
-  device_name = "/dev/sdg"
-  instance_id = "${local.instance_id}"
-  volume_id   = "${local.image_storage}"
-}
-
-resource "aws_route53_record" "harbor" {
+resource "aws_route53_record" "gangway" {
   zone_id = "${local.zone_id}"
   name    = "${local.dns_name}"
   type    = "A"

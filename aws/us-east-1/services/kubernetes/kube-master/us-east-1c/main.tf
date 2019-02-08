@@ -60,6 +60,16 @@ data "terraform_remote_state" "sg_kube_master" {
   }
 }
 
+data "terraform_remote_state" "iam" {
+  backend = "s3"
+
+  config {
+    bucket = "terraform-enron"
+    key    = "aws/us-east-1/iam/kubernetes/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+
 data "aws_ami" "centos" {
   owners      = ["679593333241"]
   most_recent = true
@@ -91,6 +101,7 @@ locals {
   sg_id     = "${data.terraform_remote_state.sg_kube_master.sg_id}"
   zone_id   = "${data.terraform_remote_state.dns.private_zone_id}"
   zone_name = "${data.terraform_remote_state.dns.private_zone_domain_name}"
+  iam_id    = "${data.terraform_remote_state.iam.kubernetes_master_iam_profile}"
 
   subnet_id   = "${aws_subnet.kube_master.id}"
   ip          = "${aws_instance.kube_master.private_ip}"
@@ -121,9 +132,11 @@ resource "aws_instance" "kube_master" {
   instance_type          = "t3.micro"
   subnet_id              = "${local.subnet_id}"
   vpc_security_group_ids = ["${local.sg_id}"]
+  iam_instance_profile   = "${local.iam_id}"
 
   tags {
     Name = "kubernetes-master-instance-${local.vpc_name}-${local.az}"
+    "kubernetes.io/cluster/enron-cluster" = "owned"
   }
 }
 
