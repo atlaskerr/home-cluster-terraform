@@ -34,15 +34,15 @@ locals {
   vpc_id   = "${data.terraform_remote_state.vpc.vpc_id}"
   vpc_name = "${data.terraform_remote_state.vpc.name}"
 
-  admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
-  admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
+  admin_vpn_c  = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
+  admin_vpn_e  = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
   prometheus_c = "${data.terraform_remote_state.cidrs.prometheus_c}"
-  etcd_b      = "${data.terraform_remote_state.cidrs.etcd_b}"
-  etcd_c      = "${data.terraform_remote_state.cidrs.etcd_c}"
-  etcd_d      = "${data.terraform_remote_state.cidrs.etcd_d}"
-  etcd_e      = "${data.terraform_remote_state.cidrs.etcd_e}"
-  etcd_f      = "${data.terraform_remote_state.cidrs.etcd_f}"
-  ldap_c      = "${data.terraform_remote_state.cidrs.ldap_c}"
+  etcd_b       = "${data.terraform_remote_state.cidrs.etcd_b}"
+  etcd_c       = "${data.terraform_remote_state.cidrs.etcd_c}"
+  etcd_d       = "${data.terraform_remote_state.cidrs.etcd_d}"
+  etcd_e       = "${data.terraform_remote_state.cidrs.etcd_e}"
+  etcd_f       = "${data.terraform_remote_state.cidrs.etcd_f}"
+  ldap_c       = "${data.terraform_remote_state.cidrs.ldap_c}"
 
   sg_id = "${aws_security_group.vault.id}"
 }

@@ -5,7 +5,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "terraform-enron"
-    key    = "aws/us-east-1/sg/concourse/worker/terraform.tfstate"
+    key    = "aws/us-east-1/sg/gangway/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -35,22 +35,21 @@ locals {
   vpc_cidr = "${data.terraform_remote_state.vpc.cidr}"
   vpc_name = "${data.terraform_remote_state.vpc.name}"
 
-  admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
-  admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
-
+  admin_vpn_c  = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
+  admin_vpn_e  = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
   prometheus_c = "${data.terraform_remote_state.cidrs.prometheus_c}"
-  concourse_c  = "${data.terraform_remote_state.cidrs.concourse_c}"
+  dex_c        = "${data.terraform_remote_state.cidrs.dex_c}"
 
-  sg_id = "${aws_security_group.concourse_worker.id}"
+  sg_id = "${aws_security_group.gangway.id}"
 }
 
-resource "aws_security_group" "concourse_worker" {
-  name        = "concourse_worker"
-  description = "Concourse Worker Security Group"
+resource "aws_security_group" "gangway" {
+  name        = "gangway"
+  description = "Gangway Security Group"
   vpc_id      = "${local.vpc_id}"
 
   tags {
-    Name = "concourse-worker-sg-${local.vpc_name}"
+    Name = "gangway-sg-${local.vpc_name}"
   }
 }
 
@@ -69,15 +68,30 @@ resource "aws_security_group_rule" "ssh_in_admin_vpn" {
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "tsa_ssh_to_ci_web" {
-  description = "Allow outbound SSH on port 2222 to Concourse CI subnets"
-  type        = "egress"
-  from_port   = "2222"
-  to_port     = "2222"
-  protocol    = "tcp"
+resource "aws_security_group_rule" "https_in_admin_vpn" {
+  description = "Allow inbound HTTPS to Admin VPN subnets"
+  type        = "ingress"
+  from_port   = "443"
+  to_port     = "443"
+  protocol    = "TCP"
 
   cidr_blocks = [
-    "${local.concourse_c}",
+    "${local.admin_vpn_c}",
+    "${local.admin_vpn_e}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "https_in_dex" {
+  description = "Allow inbound HTTPS traffic from Dex subnets"
+  type        = "ingress"
+  from_port   = "443"
+  to_port     = "443"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.dex_c}",
   ]
 
   security_group_id = "${local.sg_id}"

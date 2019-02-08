@@ -5,7 +5,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "terraform-enron"
-    key    = "aws/us-east-1/sg/kubernetes/kube-master/terraform.tfstate"
+    key    = "aws/us-east-1/sg/grafana/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -32,7 +32,6 @@ data "terraform_remote_state" "cidrs" {
 
 locals {
   vpc_id   = "${data.terraform_remote_state.vpc.vpc_id}"
-  vpc_cidr = "${data.terraform_remote_state.vpc.cidr}"
   vpc_name = "${data.terraform_remote_state.vpc.name}"
 
   admin_vpn_c  = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
@@ -43,17 +42,18 @@ locals {
   etcd_d       = "${data.terraform_remote_state.cidrs.etcd_d}"
   etcd_e       = "${data.terraform_remote_state.cidrs.etcd_e}"
   etcd_f       = "${data.terraform_remote_state.cidrs.etcd_f}"
+  ldap_c       = "${data.terraform_remote_state.cidrs.ldap_c}"
 
-  sg_id = "${aws_security_group.kube_master.id}"
+  sg_id = "${aws_security_group.grafana.id}"
 }
 
-resource "aws_security_group" "kube_master" {
-  name        = "kube-master"
-  description = "Kubernetes Master Security Group"
+resource "aws_security_group" "grafana" {
+  name        = "grafana"
+  description = "Grafana Security Group"
   vpc_id      = "${local.vpc_id}"
 
   tags {
-    Name = "kube-master-sg-${local.vpc_name}"
+    Name = "grafana-sg-${local.vpc_name}"
   }
 }
 
@@ -63,21 +63,6 @@ resource "aws_security_group_rule" "ssh_in_admin_vpn" {
   from_port   = "22"
   to_port     = "22"
   protocol    = "tcp"
-
-  cidr_blocks = [
-    "${local.admin_vpn_c}",
-    "${local.admin_vpn_e}",
-  ]
-
-  security_group_id = "${local.sg_id}"
-}
-
-resource "aws_security_group_rule" "https_in_admin_vpn" {
-  description = "Allow inbound HTTPS traffic from Admin VPN subnets"
-  type        = "ingress"
-  from_port   = "443"
-  to_port     = "443"
-  protocol    = "TCP"
 
   cidr_blocks = [
     "${local.admin_vpn_c}",
@@ -105,6 +90,44 @@ resource "aws_security_group_rule" "etcd_out" {
   security_group_id = "${local.sg_id}"
 }
 
+resource "aws_security_group_rule" "http_out_all" {
+  description       = "Allow outbound HTTP to everywhere"
+  type              = "egress"
+  from_port         = "80"
+  to_port           = "80"
+  protocol          = "TCP"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "ldaps_out" {
+  description = "Allow outbound LDAPS traffic to LDAP subnets"
+  type        = "egress"
+  from_port   = "636"
+  to_port     = "636"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.ldap_c}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "prometheus_out" {
+  description = "Allow outbound traffic to prometheus subnets"
+  type        = "egress"
+  from_port   = "9090"
+  to_port     = "9090"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.prometheus_c}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
 resource "aws_security_group_rule" "node_exporter_out" {
   description = "Allow inbound node_exporter traffic from prometheus subnets"
   type        = "ingress"
@@ -119,19 +142,19 @@ resource "aws_security_group_rule" "node_exporter_out" {
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "http_out_all" {
-  description       = "Allow outbound HTTP to everywhere"
+resource "aws_security_group_rule" "https_out_all" {
+  description       = "Allow outbound HTTPS to everywhere"
   type              = "egress"
-  from_port         = "80"
-  to_port           = "80"
+  from_port         = "443"
+  to_port           = "443"
   protocol          = "TCP"
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "https_out_all" {
-  description       = "Allow outbound HTTPS to everywhere"
-  type              = "egress"
+resource "aws_security_group_rule" "https_in_all" {
+  description       = "Allow inbound HTTPS from everywhere"
+  type              = "ingress"
   from_port         = "443"
   to_port           = "443"
   protocol          = "TCP"

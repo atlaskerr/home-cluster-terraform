@@ -5,7 +5,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "terraform-enron"
-    key    = "aws/us-east-1/sg/concourse/worker/terraform.tfstate"
+    key    = "aws/us-east-1/sg/spinnaker/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -35,22 +35,22 @@ locals {
   vpc_cidr = "${data.terraform_remote_state.vpc.cidr}"
   vpc_name = "${data.terraform_remote_state.vpc.name}"
 
-  admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
-  admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
-
+  admin_vpn_c  = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
+  admin_vpn_e  = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
   prometheus_c = "${data.terraform_remote_state.cidrs.prometheus_c}"
-  concourse_c  = "${data.terraform_remote_state.cidrs.concourse_c}"
 
-  sg_id = "${aws_security_group.concourse_worker.id}"
+  ldap_c = "${data.terraform_remote_state.cidrs.ldap_c}"
+
+  sg_id = "${aws_security_group.spinnaker.id}"
 }
 
-resource "aws_security_group" "concourse_worker" {
-  name        = "concourse_worker"
-  description = "Concourse Worker Security Group"
+resource "aws_security_group" "spinnaker" {
+  name        = "spinnaker"
+  description = "Spinnaker Security Group"
   vpc_id      = "${local.vpc_id}"
 
   tags {
-    Name = "concourse-worker-sg-${local.vpc_name}"
+    Name = "spinnaker-sg-${local.vpc_name}"
   }
 }
 
@@ -69,15 +69,61 @@ resource "aws_security_group_rule" "ssh_in_admin_vpn" {
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "tsa_ssh_to_ci_web" {
-  description = "Allow outbound SSH on port 2222 to Concourse CI subnets"
-  type        = "egress"
-  from_port   = "2222"
-  to_port     = "2222"
-  protocol    = "tcp"
+resource "aws_security_group_rule" "http_in_admin_vpn" {
+  description = "Allow inbound HTTP traffic from Admin VPN subnets"
+  type        = "ingress"
+  from_port   = "80"
+  to_port     = "80"
+  protocol    = "TCP"
 
   cidr_blocks = [
-    "${local.concourse_c}",
+    "${local.admin_vpn_c}",
+    "${local.admin_vpn_e}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "https_in_admin_vpn" {
+  description = "Allow inbound HTTPS traffic from Admin VPN subnets"
+  type        = "ingress"
+  from_port   = "443"
+  to_port     = "443"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.admin_vpn_c}",
+    "${local.admin_vpn_e}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "spinnaker_in_admin_vpn" {
+  description = "Allow inbound HTTPS traffic from Admin VPN subnets"
+  type        = "ingress"
+  from_port   = "8064"
+  to_port     = "8064"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.admin_vpn_c}",
+    "${local.admin_vpn_e}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "spinnaker_9000_in_admin_vpn" {
+  description = "Allow inbound HTTPS traffic from Admin VPN subnets"
+  type        = "ingress"
+  from_port   = "9000"
+  to_port     = "9000"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.admin_vpn_c}",
+    "${local.admin_vpn_e}",
   ]
 
   security_group_id = "${local.sg_id}"
@@ -92,6 +138,20 @@ resource "aws_security_group_rule" "node_exporter_out" {
 
   cidr_blocks = [
     "${local.prometheus_c}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "ldaps_out" {
+  description = "Allow outbound LDAPS traffic to LDAP subnets"
+  type        = "egress"
+  from_port   = "636"
+  to_port     = "636"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.ldap_c}",
   ]
 
   security_group_id = "${local.sg_id}"

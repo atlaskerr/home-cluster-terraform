@@ -5,7 +5,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "terraform-enron"
-    key    = "aws/us-east-1/sg/concourse/web/terraform.tfstate"
+    key    = "aws/us-east-1/sg/dex/terraform.tfstate"
     region = "us-east-1"
   }
 }
@@ -35,23 +35,23 @@ locals {
   vpc_cidr = "${data.terraform_remote_state.vpc.cidr}"
   vpc_name = "${data.terraform_remote_state.vpc.name}"
 
-  admin_vpn_c         = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
-  admin_vpn_e         = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
-  prometheus_c        = "${data.terraform_remote_state.cidrs.prometheus_c}"
-  concourse_workers_c = "${data.terraform_remote_state.cidrs.concourse_workers_c}"
+  admin_vpn_c   = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
+  admin_vpn_e   = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
+  prometheus_c  = "${data.terraform_remote_state.cidrs.prometheus_c}"
+  ldap_c        = "${data.terraform_remote_state.cidrs.ldap_c}"
+  gangway_c     = "${data.terraform_remote_state.cidrs.gangway_c}"
+  kube_master_c = "${data.terraform_remote_state.cidrs.kube_master_c}"
 
-  ldap_c = "${data.terraform_remote_state.cidrs.ldap_c}"
-
-  sg_id = "${aws_security_group.concourse_web.id}"
+  sg_id = "${aws_security_group.dex.id}"
 }
 
-resource "aws_security_group" "concourse_web" {
-  name        = "concourse_web"
-  description = "Concourse Web Security Group"
+resource "aws_security_group" "dex" {
+  name        = "dex"
+  description = "Dex Security Group"
   vpc_id      = "${local.vpc_id}"
 
   tags {
-    Name = "concourse-web-sg-${local.vpc_name}"
+    Name = "dex-sg-${local.vpc_name}"
   }
 }
 
@@ -85,11 +85,11 @@ resource "aws_security_group_rule" "pg_in_admin_vpn" {
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "http_in_admin_vpn" {
-  description = "Allow inbound HTTP traffic from Admin VPN subnets"
+resource "aws_security_group_rule" "https_in_admin_vpn" {
+  description = "Allow inbound HTTPS to Admin VPN subnets"
   type        = "ingress"
-  from_port   = "80"
-  to_port     = "80"
+  from_port   = "443"
+  to_port     = "443"
   protocol    = "TCP"
 
   cidr_blocks = [
@@ -100,16 +100,43 @@ resource "aws_security_group_rule" "http_in_admin_vpn" {
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "https_in_admin_vpn" {
-  description = "Allow inbound HTTPS traffic from Admin VPN subnets"
+resource "aws_security_group_rule" "https_in_gangway" {
+  description = "Allow inbound HTTPS from gangway subnets"
   type        = "ingress"
   from_port   = "443"
   to_port     = "443"
   protocol    = "TCP"
 
   cidr_blocks = [
-    "${local.admin_vpn_c}",
-    "${local.admin_vpn_e}",
+    "${local.gangway_c}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "https_in_kubernetes" {
+  description = "Allow inbound HTTPS from Kubernetes master subnets"
+  type        = "ingress"
+  from_port   = "443"
+  to_port     = "443"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.kube_master_c}",
+  ]
+
+  security_group_id = "${local.sg_id}"
+}
+
+resource "aws_security_group_rule" "https_out_gangway" {
+  description = "Allow outbound HTTPS to gangway subnets"
+  type        = "egress"
+  from_port   = "443"
+  to_port     = "443"
+  protocol    = "TCP"
+
+  cidr_blocks = [
+    "${local.gangway_c}",
   ]
 
   security_group_id = "${local.sg_id}"
@@ -129,21 +156,7 @@ resource "aws_security_group_rule" "ldaps_out" {
   security_group_id = "${local.sg_id}"
 }
 
-resource "aws_security_group_rule" "tsa_ssh_from_workers" {
-  description = "Allow inbound SSH on port 2222 from Concourse worker subnets"
-  type        = "ingress"
-  from_port   = "2222"
-  to_port     = "2222"
-  protocol    = "tcp"
-
-  cidr_blocks = [
-    "${local.concourse_workers_c}",
-  ]
-
-  security_group_id = "${local.sg_id}"
-}
-
-resource "aws_security_group_rule" "node_exporter_in" {
+resource "aws_security_group_rule" "node_exporter_out" {
   description = "Allow inbound node_exporter traffic from prometheus subnets"
   type        = "ingress"
   from_port   = "9100"

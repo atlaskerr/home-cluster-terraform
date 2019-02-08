@@ -31,9 +31,9 @@ data "terraform_remote_state" "cidrs" {
 }
 
 locals {
-  vpc_id = "${data.terraform_remote_state.vpc.vpc_id}"
+  vpc_id   = "${data.terraform_remote_state.vpc.vpc_id}"
   vpc_name = "${data.terraform_remote_state.vpc.name}"
-  sg_id  = "${aws_security_group.admin_vpn.id}"
+  sg_id    = "${aws_security_group.admin_vpn.id}"
 
   prometheus_c = "${data.terraform_remote_state.cidrs.prometheus_c}"
 }

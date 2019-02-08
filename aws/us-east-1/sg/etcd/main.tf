@@ -35,8 +35,8 @@ locals {
   vpc_cidr = "${data.terraform_remote_state.vpc.cidr}"
   vpc_name = "${data.terraform_remote_state.vpc.name}"
 
-  admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
-  admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
+  admin_vpn_c  = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
+  admin_vpn_e  = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
   prometheus_c = "${data.terraform_remote_state.cidrs.prometheus_c}"
 
   etcd_b = "${data.terraform_remote_state.cidrs.etcd_b}"

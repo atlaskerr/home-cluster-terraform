@@ -31,11 +31,11 @@ data "terraform_remote_state" "cidrs" {
 }
 
 locals {
-  vpc_id      = "${data.terraform_remote_state.vpc.vpc_id}"
-  admin_vpn_c = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
-  admin_vpn_e = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
+  vpc_id       = "${data.terraform_remote_state.vpc.vpc_id}"
+  admin_vpn_c  = "${data.terraform_remote_state.cidrs.admin_vpn_c}"
+  admin_vpn_e  = "${data.terraform_remote_state.cidrs.admin_vpn_e}"
   prometheus_c = "${data.terraform_remote_state.cidrs.prometheus_c}"
-  sg_id       = "${aws_security_group.ldap.id}"
+  sg_id        = "${aws_security_group.ldap.id}"
 }
 
 resource "aws_security_group" "ldap" {
